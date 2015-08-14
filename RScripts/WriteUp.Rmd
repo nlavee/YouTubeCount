@@ -1,0 +1,143 @@
+---
+title: "Youtube"
+author: "Anh Vu Nguyen"
+date: "April 21, 2015"
+output: html_document
+---
+=========
+THINGS TO TRY:
+(Cluster video by what are similar - find video with same number of views/likes/dislikes & like-dislike ratio)
+(try k-mean clustering)
+(Try other fields)
+=========
+
+The aim of this project is to look at several data that one can get from a Youtube video and see whether there is any relationships between these varibles.
+
+We start with the basic scatterplot for all variables.
+
+```{r}
+#If you don't have ggplot2 package, install it by uncommenting the next line and run it
+# install.packages(ggplot2)
+library(ggplot2)
+
+plot(~log(Dance.Complete$View)+log(Dance.Complete$Sub)+log(Dance.Complete$Likes)+log(Dance.Complete$Dislikes) + log(Dance.Complete$Duration))
+```
+
+================================================================================
+THE RELATIONSHIP BETWEEN VIEW COUNT AND DURATION
+================================================================================
+I am interested in the relationship between view and duration. My theory is that if a video is long (higher duration), people would be less hesitant to watch it. Also, another factor that I think worths mentioning is that if we have more subscriber for a specific channel, more people would watch it regardless of duration.
+
+First question: 1) How does Youtube calculate a video's view?
+ 
+First article: http://www.bluefountainmedia.com/blog/how-does-youtube-count-views/
+Seems like one cannot just reload a page and increases view count. So it either means that it has to be from different IP addresses (or user account, though this might seems less likely due to anonymous viewing), or it has to be from a complete view count. We don't need to get into the technical details of how they do it. We simply need to know what it is.
+Second article: http://www.quora.com/How-does-YouTube-calculate-its-views
+Quote "amount of video played should be above a threshold percentage of the length of the video" & "viewing the same video repeatedly would only generate 3 to 5 views a day".
+
+At this point, we will just assume that a view is defined as a unique complete view from an IP address. (still a debatable definition but we will stick with this for now)
+
+```{r}
+vd <- ggplot(Dance.Complete, aes(y = log(Dance.Complete$View), x= log(Dance.Complete$Duration))) + geom_point(aes(color=log(Sub)), position = "jitter") 
+vd + geom_abline(aes(intercept = 11.02327, slope = 0.15828), color = "red")  
+
+```
+
+From the graph, we can see that the points are pretty scattered with the fanning out tendency. This might indicate that as duration increases, number of views might fluctuate more.
+
+```{r}
+model3 <- lm(log(Dance.Complete$View) ~ log(Dance.Complete$Duration), na.action=na.omit)
+summary(model3)
+plot(model3)
+rstandard(model3) #plenty 
+```
+
+The summary from the model:
+==========================================================================
+Call:
+lm(formula = log(Dance.Complete$View) ~ log(Dance.Complete$Duration), 
+    na.action = na.omit)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-1.5270 -0.9362 -0.2729  0.6393  5.1648 
+
+Coefficients:
+                             Estimate Std. Error t value Pr(>|t|)    
+(Intercept)                  11.02327    0.51537  21.389   <2e-16 ***
+log(Dance.Complete$Duration)  0.15828    0.09129   1.734   0.0837 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 1.126 on 402 degrees of freedom
+Multiple R-squared:  0.007421,  Adjusted R-squared:  0.004952 
+F-statistic: 3.006 on 1 and 402 DF,  p-value: 0.08374
+==========================================================================
+We see that the p-value for Duratino is 0.0837. If we choose the p-value to be 0.05, it might say that the duration might not be siginificant (We might be thinking of changing p-value here if possible?!)
+
+R-squared is very low --> model might not be reliable
+F-stats has p-value > 0.08 --> model might not be accurate
+
+plot(model3) all seems to say that there's no relationship between these two variables.
+
+Looking at standardized residual, we see a lot of points with residuals > +- 2 and +- 3.
+We might say that there's no relationship between these two variables, which contradicts my original thoughts.
+
+If we look at the scatter plot again, this time paying attention to the color of each point, we can see that the point with on the top of the graph are usually lighter in color, indicating that the top views are generally from the channels with more subscriber, regardless of duration of the video (which makes sense). The we go down in view count, we see a mix of different color point throughout the duration, which means that for middle range count (12 - 14 for log(view) ~ 162754 - 1202604 views), the number of subscriber might not matter that much. However, if you want to get to the top range of view, you have to have a substantial number of subscriber first.
+
+
+================================================================================
+THE RELATIONSHIP BETWEEN LIKES AND UPLOAD MONTH
+================================================================================
+
+The number of Like seems to be more conscious choice on the user ends compared to view. A person might watch it and constitute to view count but whether they like the content can be said to be determined by the like number.
+
+```{r}
+boxplot(log(Dance.Complete$View) ~ months(as.Date(Dance.Complete$Date, origin="1970-01-01")), xlab="Month", ylab="log(View)", col="cadetblue1")
+
+boxplot(log(Dance.Complete$Likes) ~ months(as.Date(Dance.Complete$Date, origin="1970-01-01")), ylab="Month", xlab="log(Likes)", col="aquamarine", las = 2, horizontal = TRUE)
+```
+
+We will look at Likes and Month uploaded first. It seems like the months with highest median for log(Likes) would be September and December.
+The longest ranges are seen for June, August and April.
+
+The skew for each month:
+  Jan - skewed right
+  Feb - skewed right
+  March - symmetric / skewed left
+  April - symmetric
+  May - symmetric
+  June - skewed left
+  July - skewed right
+  August - skewed right
+  September - skewed right
+  October - symmetric
+  November - symmetric
+  December - skewed right
+  
+Overall distribution of log(Likes)
+```{r}
+h <-hist(log(Dance.Complete$Likes))
+xfit<-seq(min(log(Dance.Complete$Likes)),max(log(Dance.Complete$Likes)),length=400) 
+yfit<-dnorm(xfit,mean=mean(log(Dance.Complete$Likes)),sd=sd(log(Dance.Complete$Likes))) 
+yfit <- yfit*diff(h$mids[1:2])*length(log(Dance.Complete$Likes)) 
+lines(xfit, yfit, col="blue", lwd=2)
+```
+
+```{r}
+boxplot(log(Dance.Complete$Dislikes) ~ months(as.Date(Dance.Complete$Date, origin="1970-01-01")), ylab="Month", xlab="log(Dislikes)", col="cornsilk", las = 2, horizontal = TRUE)
+```
+
+================================================================================
+THE RELATIONSHIP BETWEEN DISLIKES AND LIKES COUNT
+================================================================================
+
+Basic scatter plotting shows the following:
+
+```{r}
+p <- ggplot(Dance.Complete, aes(log(Dance.Complete$Likes)/log(Dance.Complete$View),log(Dance.Complete$Dislikes)/log(Dance.Complete$View))) + geom_point()
+p + geom_abline(aes(intercept=-0.33, slope=1), col="red")
+```
+
+
+
