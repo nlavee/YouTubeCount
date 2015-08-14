@@ -14,7 +14,7 @@ The aim of this project is to look at several data fields that one can get from 
 ## Data
 The data were scrapped from Youtube website. Because of personal interest, I only performed search on Dance Video.  
 Here's a screenshot of the search:  
- ![](YoutubeScreenShot.png)  
+ ![](../Plots/YoutubeScreenShot.png)  
   
 The data were collected using R. Here are the variables that composed of the dataset:  
 ```{r include=FALSE}
